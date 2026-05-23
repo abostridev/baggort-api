@@ -5,24 +5,22 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
+const errorHandler = require('./middlewares/errorHandler');
+
+const authRoutes = require('./modules/auth/auth.routes');
 
 const app = express();
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-  },
+  cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
-// Middlewares globaux
 app.use(helmet());
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Route de santé — pour vérifier que l'API tourne
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -32,18 +30,16 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 404 handler
+// Routes
+app.use('/api/auth', authRoutes);
+
+// 404
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route introuvable' });
+  res.status(404).json({ success: false, error: 'Route introuvable' });
 });
 
-// Error handler global
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    error: err.message || 'Erreur interne du serveur',
-  });
-});
+// Erreurs globales
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
